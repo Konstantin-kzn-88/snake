@@ -10,7 +10,7 @@ import sys
 import os
 from pathlib import Path
 
-from PySide2.QtWidgets import QApplication, QMainWindow, QWidget, QStyleFactory, QLabel
+from PySide2.QtWidgets import QApplication, QMainWindow, QStyleFactory, QLabel
 from PySide2.QtGui import QIcon, QPixmap, QPainter, QPen, QColor
 from PySide2.QtCore import QPoint, QObject, QRunnable, Signal, QThreadPool, QThread, Qt
 
@@ -23,25 +23,22 @@ SNAKE_DIRECTION = {16777236: 'RIGHT',
 class WorkerSignals(QObject):
     finished = Signal()
     error = Signal(str)
-    result = Signal(int)
+    result = Signal(str)
 
 
 class Worker(QRunnable):
     def __init__(self):
-        """
-        :param
-        """
         super().__init__()
         self.signals = WorkerSignals()
 
     def run(self):
         try:
-            var_in_worker = 1
+            var_in_worker = 'work'
         except Exception as e:
             self.signals.error.emit(str(e))
         else:
             while True:
-                QThread.msleep(200)
+                QThread.msleep(100)
                 self.signals.result.emit(var_in_worker)
 
 
@@ -49,12 +46,12 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.POINT_X = [20, 30, 40]
-        self.POINT_Y = [20, 20, 20]
+        self.POINT_X = [20, 30, 40, 50, 60, 70, 80]
+        self.POINT_Y = [20, 20, 20, 20, 20, 20, 20]
         self.SNAKE_DIRECTION = 'RIGHT'
         self.SNAKE_STEP = 10
 
-        self.threadpool = QThreadPool()  # Пул потоков
+        self.threadpool = QThreadPool()
 
         path_ico = str(Path(os.getcwd()))
         main_ico = QIcon(path_ico + '/ico/snake.png')
@@ -71,6 +68,7 @@ class MainWindow(QMainWindow):
         self.canvas.fill(QColor('green'))
         self.label.setPixmap(self.canvas)
         self.setCentralWidget(self.label)
+        self.canvas = self.label.pixmap()
 
         self.worker = Worker()
         self.worker.signals.result.connect(self.worker_output)
@@ -80,44 +78,37 @@ class MainWindow(QMainWindow):
         self.show()
 
     def draw_snake(self):
+        self.POINT_X.pop(0)
+        self.POINT_Y.pop(0)
         if self.SNAKE_DIRECTION == 'RIGHT':
-            self.POINT_X.pop(0)
-            self.POINT_Y.pop(0)
             self.POINT_X.append(self.POINT_X[-1] + self.SNAKE_STEP)
             self.POINT_Y.append(self.POINT_Y[-1])
-        if self.SNAKE_DIRECTION == 'DOWN':
-            self.POINT_X.pop(0)
-            self.POINT_Y.pop(0)
+        elif self.SNAKE_DIRECTION == 'DOWN':
             self.POINT_X.append(self.POINT_X[-1])
             self.POINT_Y.append(self.POINT_Y[-1] + self.SNAKE_STEP)
-
-        if self.SNAKE_DIRECTION == 'LEFT':
-            self.POINT_X.pop(0)
-            self.POINT_Y.pop(0)
+        elif self.SNAKE_DIRECTION == 'LEFT':
             self.POINT_X.append(self.POINT_X[-1] - self.SNAKE_STEP)
             self.POINT_Y.append(self.POINT_Y[-1])
-
-        if self.SNAKE_DIRECTION == 'UP':
-            self.POINT_X.pop(0)
-            self.POINT_Y.pop(0)
+        elif self.SNAKE_DIRECTION == 'UP':
             self.POINT_X.append(self.POINT_X[-1])
             self.POINT_Y.append(self.POINT_Y[-1] - self.SNAKE_STEP)
 
-        self.canvas = QPixmap(500, 500)
         self.canvas.fill(QColor('green'))
-        self.label.setPixmap(self.canvas)
-
-        self.canvas = self.label.pixmap()
         painter = QPainter(self.canvas)
         pen = QPen()
         pen.setWidth(10)
-        pen.setColor(QColor('blue'))
-        painter.setPen(pen)
-        painter.drawPolyline([
-            QPoint(self.POINT_X[0], self.POINT_Y[0]),
-            QPoint(self.POINT_X[1], self.POINT_Y[1]),
-            QPoint(self.POINT_X[2], self.POINT_Y[2])]
-        )
+
+
+        for i in range(len(self.POINT_X)):
+            if i == len(self.POINT_X)-1:
+                pen.setColor(QColor('yellow'))
+                painter.setPen(pen)
+            else:
+                pen.setColor(QColor('blue'))
+                painter.setPen(pen)
+            painter.drawEllipse(QPoint(self.POINT_X[i], self.POINT_Y[i]), 3,3)
+
+
         painter.end()
         self.label.setPixmap(self.canvas)
 
@@ -130,17 +121,11 @@ class MainWindow(QMainWindow):
         result = SNAKE_DIRECTION[event.key()]  # отслеживаем нажатие на кнопку
         if self.SNAKE_DIRECTION == result:  # направление совпадает
             pass  # ничего не делаем
-        elif result == 'RIGHT' and self.SNAKE_DIRECTION == 'LEFT':  # направление противоположно
-            pass
-        elif result == 'LEFT' and self.SNAKE_DIRECTION == 'RIGHT':  # направление противоположно
-            pass
-        elif result == 'DOWN' and self.SNAKE_DIRECTION == 'UP':  # направление противоположно
-            pass
-        elif result == 'UP' and self.SNAKE_DIRECTION == 'DOWN':  # направление противоположно
-            pass
+        elif (result, self.SNAKE_DIRECTION) in (('RIGHT','LEFT'), ('LEFT','RIGHT'),
+                                                ('DOWN','UP'), ('UP','DOWN')): # направление противоположно
+            pass # ничего не делаем
         else:  # направление можно поменять
             self.SNAKE_DIRECTION = result
-            print(self.SNAKE_DIRECTION)
 
     def closeEvent(self, event):
         self.worker.autoDelete()
