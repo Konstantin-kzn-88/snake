@@ -9,6 +9,7 @@
 import sys
 import os
 from pathlib import Path
+import random
 
 from PySide2.QtWidgets import QApplication, QMainWindow, QStyleFactory, QLabel
 from PySide2.QtGui import QIcon, QPixmap, QPainter, QPen, QColor
@@ -38,7 +39,7 @@ class Worker(QRunnable):
             self.signals.error.emit(str(e))
         else:
             while True:
-                QThread.msleep(100)
+                QThread.msleep(150)
                 self.signals.result.emit(var_in_worker)
 
 
@@ -50,6 +51,9 @@ class MainWindow(QMainWindow):
         self.POINT_Y = [20, 20, 20, 20, 20, 20, 20]
         self.SNAKE_DIRECTION = 'RIGHT'
         self.SNAKE_STEP = 10
+
+        self.POINT_X_FOOD = 300
+        self.POINT_Y_FOOD = 300
 
         self.threadpool = QThreadPool()
 
@@ -78,8 +82,6 @@ class MainWindow(QMainWindow):
         self.show()
 
     def draw_snake(self):
-        self.POINT_X.pop(0)
-        self.POINT_Y.pop(0)
         if self.SNAKE_DIRECTION == 'RIGHT':
             self.POINT_X.append(self.POINT_X[-1] + self.SNAKE_STEP)
             self.POINT_Y.append(self.POINT_Y[-1])
@@ -93,12 +95,21 @@ class MainWindow(QMainWindow):
             self.POINT_X.append(self.POINT_X[-1])
             self.POINT_Y.append(self.POINT_Y[-1] - self.SNAKE_STEP)
 
+        if self.POINT_X[-1] == self.POINT_X_FOOD and self.POINT_Y[-1] == self.POINT_Y_FOOD:
+            self.POINT_X.append(self.POINT_X_FOOD)
+            self.POINT_Y.append(self.POINT_Y_FOOD)
+            self.POINT_X_FOOD = random.randint(1, 49) *10
+            self.POINT_Y_FOOD = random.randint(1, 49) * 10
+        else:
+            self.POINT_X.pop(0)
+            self.POINT_Y.pop(0)
+
         self.canvas.fill(QColor('green'))
         painter = QPainter(self.canvas)
         pen = QPen()
         pen.setWidth(10)
 
-
+        # нарисуем змею
         for i in range(len(self.POINT_X)):
             if i == len(self.POINT_X)-1:
                 pen.setColor(QColor('yellow'))
@@ -108,6 +119,10 @@ class MainWindow(QMainWindow):
                 painter.setPen(pen)
             painter.drawEllipse(QPoint(self.POINT_X[i], self.POINT_Y[i]), 3,3)
 
+        # Нарисуем еду
+        pen.setColor(QColor('red'))
+        painter.setPen(pen)
+        painter.drawEllipse(QPoint(self.POINT_X_FOOD, self.POINT_Y_FOOD), 3, 3)
 
         painter.end()
         self.label.setPixmap(self.canvas)
