@@ -1,9 +1,7 @@
 # -----------------------------------------------------------
 # Игра "змейка"
-#
 # 2023 Kuznetsov Konstantin
 # email kuznetsovkm@yandex.ru
-
 # -----------------------------------------------------------
 
 import sys
@@ -15,12 +13,16 @@ from PySide2.QtWidgets import QApplication, QMainWindow, QStyleFactory, QLabel
 from PySide2.QtGui import QIcon, QPixmap, QPainter, QPen, QColor
 from PySide2.QtCore import QPoint, QObject, QRunnable, Signal, QThreadPool, QThread, Qt
 
+# Направление стрелок
 SNAKE_DIRECTION = {16777236: 'RIGHT',
                    16777234: 'LEFT',
                    16777235: 'UP',
                    16777237: 'DOWN'}
 
+# Скорость змеи (скрость отрисовки, мс)
+SPEED = 150
 
+# Класс цикла для задержки отрисовки
 class WorkerSignals(QObject):
     finished = Signal()
     error = Signal(str)
@@ -35,23 +37,22 @@ class Worker(QRunnable):
     def run(self):
         try:
             var_in_worker = 'work'
+            while True:
+                QThread.msleep(SPEED)
+                self.signals.result.emit(var_in_worker)
         except Exception as e:
             self.signals.error.emit(str(e))
-        else:
-            while True:
-                QThread.msleep(150)
-                self.signals.result.emit(var_in_worker)
 
-
+# Главное окно
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-
+        # Начальные координаты змеи
         self.POINT_X = [20, 30, 40, 50, 60, 70, 80]
         self.POINT_Y = [20, 20, 20, 20, 20, 20, 20]
         self.SNAKE_DIRECTION = 'RIGHT'
         self.SNAKE_STEP = 10
-
+        # Начальные координаты еды
         self.POINT_X_FOOD = 300
         self.POINT_Y_FOOD = 300
 
@@ -66,14 +67,14 @@ class MainWindow(QMainWindow):
     def init_UI(self):
         self.setFixedSize(500, 500)
         self.setWindowTitle('Snake')
-
+        # Поле игровое
         self.label = QLabel()
         self.canvas = QPixmap(500, 500)
         self.canvas.fill(QColor('green'))
         self.label.setPixmap(self.canvas)
         self.setCentralWidget(self.label)
         self.canvas = self.label.pixmap()
-
+        # Цикл отрисовки змеи
         self.worker = Worker()
         self.worker.signals.result.connect(self.worker_output)
         self.threadpool.start(self.worker)
@@ -82,6 +83,7 @@ class MainWindow(QMainWindow):
         self.show()
 
     def draw_snake(self):
+        # Координаты змеи
         if self.SNAKE_DIRECTION == 'RIGHT':
             self.POINT_X.append(self.POINT_X[-1] + self.SNAKE_STEP)
             self.POINT_Y.append(self.POINT_Y[-1])
@@ -94,7 +96,7 @@ class MainWindow(QMainWindow):
         elif self.SNAKE_DIRECTION == 'UP':
             self.POINT_X.append(self.POINT_X[-1])
             self.POINT_Y.append(self.POINT_Y[-1] - self.SNAKE_STEP)
-
+        # Координаты еды и условие "если змея съела еду"
         if self.POINT_X[-1] == self.POINT_X_FOOD and self.POINT_Y[-1] == self.POINT_Y_FOOD:
             self.POINT_X.append(self.POINT_X_FOOD)
             self.POINT_Y.append(self.POINT_Y_FOOD)
@@ -103,7 +105,7 @@ class MainWindow(QMainWindow):
         else:
             self.POINT_X.pop(0)
             self.POINT_Y.pop(0)
-
+        # очистка поля
         self.canvas.fill(QColor('green'))
         painter = QPainter(self.canvas)
         pen = QPen()
@@ -143,7 +145,7 @@ class MainWindow(QMainWindow):
             self.SNAKE_DIRECTION = result
 
     def closeEvent(self, event):
-        self.worker.autoDelete()
+        pass
 
 
 if __name__ == '__main__':
