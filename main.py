@@ -22,6 +22,7 @@ SNAKE_DIRECTION = {16777236: 'RIGHT',
 # Скорость змеи (скрость отрисовки, мс)
 SPEED = 150
 
+
 # Класс цикла для задержки отрисовки
 class WorkerSignals(QObject):
     finished = Signal()
@@ -30,18 +31,20 @@ class WorkerSignals(QObject):
 
 
 class Worker(QRunnable):
-    def __init__(self):
+    def __init__(self, is_running: bool):
         super().__init__()
         self.signals = WorkerSignals()
+        self.is_running = is_running
 
     def run(self):
         try:
             var_in_worker = 'work'
-            while True:
+            while self.is_running:
                 QThread.msleep(SPEED)
                 self.signals.result.emit(var_in_worker)
         except Exception as e:
             self.signals.error.emit(str(e))
+
 
 # Главное окно
 class MainWindow(QMainWindow):
@@ -53,8 +56,8 @@ class MainWindow(QMainWindow):
         self.SNAKE_DIRECTION = 'RIGHT'
         self.SNAKE_STEP = 10
         # Начальные координаты еды
-        self.POINT_X_FOOD = 300
-        self.POINT_Y_FOOD = 300
+        self.POINT_X_FOOD = random.randint(1, 49) * 10
+        self.POINT_Y_FOOD = random.randint(1, 49) * 10
 
         self.threadpool = QThreadPool()
 
@@ -75,7 +78,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.label)
         self.canvas = self.label.pixmap()
         # Цикл отрисовки змеи
-        self.worker = Worker()
+        self.worker = Worker(is_running=True)
         self.worker.signals.result.connect(self.worker_output)
         self.threadpool.start(self.worker)
 
@@ -100,7 +103,7 @@ class MainWindow(QMainWindow):
         if self.POINT_X[-1] == self.POINT_X_FOOD and self.POINT_Y[-1] == self.POINT_Y_FOOD:
             self.POINT_X.append(self.POINT_X_FOOD)
             self.POINT_Y.append(self.POINT_Y_FOOD)
-            self.POINT_X_FOOD = random.randint(1, 49) *10
+            self.POINT_X_FOOD = random.randint(1, 49) * 10
             self.POINT_Y_FOOD = random.randint(1, 49) * 10
         else:
             self.POINT_X.pop(0)
@@ -113,13 +116,13 @@ class MainWindow(QMainWindow):
 
         # нарисуем змею
         for i in range(len(self.POINT_X)):
-            if i == len(self.POINT_X)-1:
+            if i == len(self.POINT_X) - 1:
                 pen.setColor(QColor('yellow'))
                 painter.setPen(pen)
             else:
                 pen.setColor(QColor('blue'))
                 painter.setPen(pen)
-            painter.drawEllipse(QPoint(self.POINT_X[i], self.POINT_Y[i]), 3,3)
+            painter.drawEllipse(QPoint(self.POINT_X[i], self.POINT_Y[i]), 3, 3)
 
         # Нарисуем еду
         pen.setColor(QColor('red'))
@@ -138,14 +141,14 @@ class MainWindow(QMainWindow):
         result = SNAKE_DIRECTION[event.key()]  # отслеживаем нажатие на кнопку
         if self.SNAKE_DIRECTION == result:  # направление совпадает
             pass  # ничего не делаем
-        elif (result, self.SNAKE_DIRECTION) in (('RIGHT','LEFT'), ('LEFT','RIGHT'),
-                                                ('DOWN','UP'), ('UP','DOWN')): # направление противоположно
-            pass # ничего не делаем
+        elif (result, self.SNAKE_DIRECTION) in (('RIGHT', 'LEFT'), ('LEFT', 'RIGHT'),
+                                                ('DOWN', 'UP'), ('UP', 'DOWN')):  # направление противоположно
+            pass  # ничего не делаем
         else:  # направление можно поменять
             self.SNAKE_DIRECTION = result
 
     def closeEvent(self, event):
-        pass
+        self.worker.is_running = False
 
 
 if __name__ == '__main__':
